@@ -9,7 +9,7 @@ from reportlab.lib.pagesizes import A4
 import os
 from django.conf import settings
 
-def process_pdf(pdf_path, header_image_path, footer_image_path, name):
+def process_pdf(pdf_path, header_image_path, footer_image_path, name, header_y_coord):
     output_file_name = f'{name}_processed_lab_report.pdf'
     output_pdf_path = os.path.join(settings.DOWNLOADS_DIR, output_file_name)
 
@@ -23,7 +23,7 @@ def process_pdf(pdf_path, header_image_path, footer_image_path, name):
 
         # Open the header and footer images
         header_img = canvas.Canvas("header.pdf", pagesize=A4)
-        header_img.drawInlineImage(header_image_path, 0, 750, width=600, height=130)
+        header_img.drawInlineImage(header_image_path, 0, header_y_coord, width=600, height=115)
         header_img.save()
 
         footer_img = canvas.Canvas("footer.pdf", pagesize=A4)
@@ -57,33 +57,24 @@ def process_lab_report(request):
         if form.is_valid():
             lab_report = form.save()
 
-
-            print("Lab Report created:", lab_report)
-
             # Get the name entered in the form
             name = form.cleaned_data['name'] 
 
+            # Determine which header image to use based on checkbox selection
+            header_image_name = 'GABRIELDIAGNOSTICS.png'
+            header_y_coord = 740  # Default y-coordinate for "normal"
+            if form.cleaned_data['pr']:
+                header_image_name = 'Gabrieldiagnostics2.png'
+                header_y_coord = 729  # Adjust y-coordinate for "PR"
+
             # Specify paths to header and footer images
-            header_image_path = os.path.join(settings.STATIC_ROOT, 'reportspdf/images/GABRIELDIAGNOSTICS.png')
+            header_image_path = os.path.join(settings.STATIC_ROOT, f'reportspdf/images/{header_image_name}')
             footer_image_path = os.path.join(settings.STATIC_ROOT, 'reportspdf/images/FOOTER.png')
-            
-
-            # Debug print to check paths
-            print("Header image path:", header_image_path)
-            print("Footer image path:", footer_image_path)
-
-            print("LabReport object created successfully:", lab_report)  # Add this debug print
-
-
 
             # Process the lab report PDF
             output_pdf_path = process_pdf(
-                lab_report.pdf_file.path, header_image_path, footer_image_path, name
+                lab_report.pdf_file.path, header_image_path, footer_image_path, name, header_y_coord
             )
-
-
-
-            print("Output PDF path:", output_pdf_path)  # Add this debug print
 
             # Provide the processed PDF for download
             with open(output_pdf_path, 'rb') as pdf_file:
@@ -94,6 +85,7 @@ def process_lab_report(request):
         form = LabReportForm()
 
     return render(request, 'overlay-pdf.html', {'form': form})
+
 
 def login_view(request):
     if request.user.is_authenticated:
